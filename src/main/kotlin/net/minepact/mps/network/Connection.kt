@@ -2,7 +2,6 @@ package net.minepact.mps.network
 
 import kotlinx.coroutines.*
 import net.minepact.mps.core.MinePactServer
-import net.minepact.mps.player.Player
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.net.Socket
@@ -23,7 +22,6 @@ class Connection(
     private val output = BufferedOutputStream(socket.getOutputStream())
     private val incomingBuffer = ByteArrayOutputStream()
 
-    var player: Player? = null
     var protocolState = ProtocolState.HANDSHAKE
         private set
     val address = socket.inetAddress.hostAddress
@@ -91,6 +89,7 @@ class Connection(
             val packet = PacketRegistry.create(protocolState, packetId) ?: return
 
             packet.read(buffer)
+            println("HandlePacket: State=$protocolState, ID=0x${packetId.toString(16)}, Connection=${address}:${port}")
             packet.handle(this)
         } catch (e: Exception) {
             println("Packet handling error: ${e.message}")

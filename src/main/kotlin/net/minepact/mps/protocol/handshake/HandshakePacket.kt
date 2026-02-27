@@ -28,10 +28,10 @@ class HandshakePacket : Packet {
         }
 
         println("Handshake:")
-        println(" Protocol: $protocolVersion")
-        println(" Address: $serverAddress")
-        println(" Port: $serverPort")
-        println(" NextState: $nextState")
+        println("| Protocol: $protocolVersion")
+        println("| Address: $serverAddress")
+        println("| Port: $serverPort")
+        println("| NextState: $nextState")
 
         connection.setProtocolState(
             when (nextState) {

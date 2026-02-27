@@ -25,8 +25,7 @@ object PacketRegistry {
         id: Int,
         supplier: () -> Packet
     ) {
-        registry
-            .computeIfAbsent(state) { mutableMapOf() }[id] = supplier
+        registry.computeIfAbsent(state) { mutableMapOf() }[id] = supplier
     }
 
     fun create(

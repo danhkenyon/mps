@@ -22,20 +22,14 @@ class LoginStartPacket : Packet {
         println("Login attempt: $username")
 
         val uuid = generateOfflineUUID(username)
-        val server = connection.getServer()
-        val playerManager = server.getPlayerManager()
-        val player = playerManager.createPlayer(uuid, username, connection)
 
         LoginSuccessPacket(uuid, username).handle(connection)
-
         connection.setProtocolState(ProtocolState.PLAY)
-
         VersionRegistry.current()
             .protocol
             .handleInitialPlay(connection)
 
         KeepAliveManager(connection, connection.getScope()).start()
-        println("Player ${player.username} logged in (EntityId=${player.entityId})")
     }
 
     private fun generateOfflineUUID(username: String): UUID {

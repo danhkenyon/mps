@@ -1,5 +1,6 @@
 package net.minepact.mps.protocol.handshake
 
+import net.minepact.mps.core.version.VersionRegistry
 import net.minepact.mps.network.Connection
 import net.minepact.mps.protocol.Packet
 import net.minepact.mps.protocol.PacketBuffer
@@ -20,6 +21,12 @@ class HandshakePacket : Packet {
         nextState = buffer.readVarInt()
     }
     override suspend fun handle(connection: Connection) {
+        if (!VersionRegistry.isProtocolSupported(protocolVersion)) {
+            println("Unsupported protocol: $protocolVersion")
+            connection.setProtocolState(ProtocolState.STATUS)
+            return
+        }
+
         println("Handshake:")
         println(" Protocol: $protocolVersion")
         println(" Address: $serverAddress")

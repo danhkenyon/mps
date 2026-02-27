@@ -3,11 +3,22 @@ package net.minepact.mps.protocol.play
 import net.minepact.mps.network.Connection
 import net.minepact.mps.protocol.Packet
 import net.minepact.mps.protocol.PacketBuffer
-import net.minepact.mps.registry.RegistryCodecWriter
-import java.util.*
+import net.minepact.mps.registry.builtin.Biome
+import net.minepact.mps.registry.builtin.DimensionType
+import net.minepact.mps.registry.builtin.writeBiomeRegistry
+import net.minepact.mps.registry.builtin.writeDimensionRegistry
 
 class JoinGamePacket(
-    private val entityId: Int
+    val entityId: Int,
+    val isHardcore: Boolean,
+    val gameMode: Int,
+
+    val dimensionName: String,
+    val hashedSeed: Long,
+    val spawnX: Double,
+    val spawnY: Double,
+    val spawnZ: Double
+
 ) : Packet {
     override val packetId: Int = 0x28
 
@@ -16,42 +27,50 @@ class JoinGamePacket(
         connection.sendPacket(packetId) { buf ->
 
             // --- Player Info ---
-            buf.writeInt(entityId)         // Entity ID
-            buf.writeBoolean(false)        // Hardcore
-            buf.writeByte(1)               // Gamemode (1 = Creative)
-            buf.writeByte(-1)              // Previous Gamemode (-1 = none)
+            buf.writeInt(entityId)
+            buf.writeBoolean(isHardcore)
+            buf.writeByte(gameMode)
+            buf.writeByte(-1) // Previous Gamemode
 
             // --- World List ---
-            buf.writeVarInt(1)             // World count
-            buf.writeString("minecraft:overworld")
+            buf.writeVarInt(1)
+            buf.writeString(dimensionName)
 
             // --- Registry Codec ---
-            writeRegistryCodec(buf, connection)        // MUST be valid full NBT
+            writeRegistryCodec(buf, connection)
 
             // --- Dimension Info ---
-            buf.writeString("minecraft:overworld") // Dimension Type
-            buf.writeString("minecraft:overworld") // Dimension Name
+            buf.writeString(dimensionName) // Dimension Type
+            buf.writeString(dimensionName) // Dimension Name
 
             // --- World Settings ---
-            buf.writeLong(0L)              // Hashed seed
-            buf.writeVarInt(20)            // Max players (ignored)
-            buf.writeVarInt(12)            // View distance
-            buf.writeVarInt(12)            // Simulation distance
+            buf.writeLong(hashedSeed)
+            buf.writeVarInt(20)
+            buf.writeVarInt(12)
+            buf.writeVarInt(12)
 
-            buf.writeBoolean(false)        // Reduced debug info
-            buf.writeBoolean(true)         // Enable respawn screen
-            buf.writeBoolean(false)        // Is debug world
-            buf.writeBoolean(false)        // Is flat world
+            buf.writeBoolean(false)
+            buf.writeBoolean(true)
+            buf.writeBoolean(false)
+            buf.writeBoolean(false)
 
-            // --- Optional Last Death Location ---
-            buf.writeBoolean(false)        // Has last death location
-
-            // --- Portal cooldown ---
-            buf.writeVarInt(0)
+            buf.writeBoolean(false) // Last death location
+            buf.writeVarInt(0)      // Portal cooldown
         }
     }
 
-    private fun writeRegistryCodec(buf: PacketBuffer, connection: Connection) {
+    private fun writeRegistryCodec(
+        buffer: PacketBuffer,
+        connection: Connection
+    ) {
+        val registryManager = connection.getServer().registryManager
 
+        val dimensionRegistry = registryManager.get<DimensionType>("minecraft:dimension_type")
+        val biomeRegistry = registryManager.get<Biome>("minecraft:worldgen/biome")
+
+        buffer.writeNbtRootCompound {
+            writeDimensionRegistry(dimensionRegistry)
+            writeBiomeRegistry(biomeRegistry)
+        }
     }
 }

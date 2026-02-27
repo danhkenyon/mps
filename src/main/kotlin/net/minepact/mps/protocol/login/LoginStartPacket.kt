@@ -1,12 +1,11 @@
 package net.minepact.mps.protocol.login
 
+import net.minepact.mps.core.version.VersionRegistry
 import net.minepact.mps.network.Connection
 import net.minepact.mps.protocol.Packet
 import net.minepact.mps.protocol.PacketBuffer
 import net.minepact.mps.protocol.ProtocolState
-import net.minepact.mps.protocol.play.JoinGamePacket
 import net.minepact.mps.protocol.play.KeepAliveManager
-import net.minepact.mps.protocol.play.PlayerPositionPacket
 import java.util.*
 
 class LoginStartPacket : Packet {
@@ -23,17 +22,20 @@ class LoginStartPacket : Packet {
         println("Login attempt: $username")
 
         val uuid = generateOfflineUUID(username)
+        val server = connection.getServer()
+        val playerManager = server.getPlayerManager()
+        val player = playerManager.createPlayer(uuid, username, connection)
 
         LoginSuccessPacket(uuid, username).handle(connection)
 
         connection.setProtocolState(ProtocolState.PLAY)
 
-        JoinGamePacket(entityId = 1).handle(connection)
-        PlayerPositionPacket().handle(connection)
+        VersionRegistry.current()
+            .protocol
+            .handleInitialPlay(connection)
 
         KeepAliveManager(connection, connection.getScope()).start()
-
-        println("Player $username logged in (offline UUID: $uuid)")
+        println("Player ${player.username} logged in (EntityId=${player.entityId})")
     }
 
     private fun generateOfflineUUID(username: String): UUID {

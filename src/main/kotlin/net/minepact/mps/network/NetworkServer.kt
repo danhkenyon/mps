@@ -1,6 +1,7 @@
 package net.minepact.mps.network
 
 import kotlinx.coroutines.*
+import net.minepact.mps.core.MinePactServer
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicBoolean
@@ -8,7 +9,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 class NetworkServer(
     private val host: String,
     private val port: Int,
-    private val parentScope: CoroutineScope
+    private val parentScope: CoroutineScope,
+    private val server: MinePactServer
 ) {
     private val running = AtomicBoolean(false)
     private val connectionManager = ConnectionManager()
@@ -40,7 +42,7 @@ class NetworkServer(
     }
 
     private fun handleNewConnection(socket: Socket) {
-        val connection = Connection(socket, scope) {
+        val connection = Connection(socket, scope, server) {
             connectionManager.remove(it)
             println("Disconnected: ${it.address}:${it.port}")
         }

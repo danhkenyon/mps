@@ -1,6 +1,8 @@
 package net.minepact.mps.network
 
 import kotlinx.coroutines.*
+import net.minepact.mps.core.MinePactServer
+import net.minepact.mps.player.Player
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.net.Socket
@@ -13,24 +15,22 @@ import java.io.ByteArrayOutputStream
 class Connection(
     private val socket: Socket,
     private val scope: CoroutineScope,
+    private val server: MinePactServer,
     private val onDisconnect: suspend (Connection) -> Unit
 ) {
     private val alive = AtomicBoolean(true)
-
     private val input = BufferedInputStream(socket.getInputStream())
     private val output = BufferedOutputStream(socket.getOutputStream())
-
     private val incomingBuffer = ByteArrayOutputStream()
 
-    private var protocolState = ProtocolState.HANDSHAKE
-
+    var player: Player? = null
+    var protocolState = ProtocolState.HANDSHAKE
+        private set
     val address = socket.inetAddress.hostAddress
     val port = socket.port
 
     fun start() {
-        scope.launch {
-            readLoop()
-        }
+        scope.launch { readLoop() }
     }
 
     private suspend fun readLoop() {
@@ -127,5 +127,7 @@ class Connection(
     fun setProtocolState(state: ProtocolState) {
         this.protocolState = state
     }
+
     fun getScope(): CoroutineScope = scope
+    fun getServer(): MinePactServer = server
 }

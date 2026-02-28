@@ -1,7 +1,7 @@
 package net.minepact.mps.network
 
 import kotlinx.coroutines.*
-import net.minepact.mps.core.MinePactServer
+import net.minepact.mps.core.MinecraftServer
 import java.net.ServerSocket
 import java.net.Socket
 import java.util.concurrent.atomic.AtomicBoolean
@@ -10,7 +10,7 @@ class NetworkServer(
     private val host: String,
     private val port: Int,
     private val parentScope: CoroutineScope,
-    private val server: MinePactServer
+    private val server: MinecraftServer
 ) {
     private val running = AtomicBoolean(false)
     private val connectionManager = ConnectionManager()

@@ -4,5 +4,6 @@ enum class ProtocolState {
     HANDSHAKE,
     STATUS,
     LOGIN,
+    CONFIGURATION,
     PLAY
 }

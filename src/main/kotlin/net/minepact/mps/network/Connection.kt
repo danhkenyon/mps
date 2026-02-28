@@ -1,7 +1,8 @@
 package net.minepact.mps.network
 
 import kotlinx.coroutines.*
-import net.minepact.mps.core.MinePactServer
+import net.minepact.mps.core.MinecraftServer
+import net.minepact.mps.player.Player
 import java.io.BufferedInputStream
 import java.io.BufferedOutputStream
 import java.net.Socket
@@ -14,7 +15,7 @@ import java.io.ByteArrayOutputStream
 class Connection(
     private val socket: Socket,
     private val scope: CoroutineScope,
-    private val server: MinePactServer,
+    private val server: MinecraftServer,
     private val onDisconnect: suspend (Connection) -> Unit
 ) {
     private val alive = AtomicBoolean(true)
@@ -22,10 +23,11 @@ class Connection(
     private val output = BufferedOutputStream(socket.getOutputStream())
     private val incomingBuffer = ByteArrayOutputStream()
 
+    var player: Player? = null
     var protocolState = ProtocolState.HANDSHAKE
         private set
-    val address = socket.inetAddress.hostAddress
-    val port = socket.port
+    val address: String = socket.inetAddress.hostAddress
+    val port: Int = socket.port
 
     fun start() {
         scope.launch { readLoop() }
@@ -34,23 +36,22 @@ class Connection(
     private suspend fun readLoop() {
         try {
             val buffer = ByteArray(8192)
-
             while (alive.get()) {
-                val read = withContext(Dispatchers.IO) {
-                    input.read(buffer)
-                }
+                val read = withContext(Dispatchers.IO) { input.read(buffer) }
                 if (read == -1) break
-
                 appendIncoming(buffer, read)
                 processIncoming()
             }
         } catch (_: Exception) {
-        } finally { disconnect() }
+        } finally {
+            disconnect()
+        }
     }
 
     private fun appendIncoming(data: ByteArray, length: Int) {
         incomingBuffer.write(data, 0, length)
     }
+
     private suspend fun processIncoming() {
         while (true) {
             val bytes = incomingBuffer.toByteArray()
@@ -60,23 +61,21 @@ class Connection(
                 val packetLength = VarInt.read(inputStream)
                 val headerSize = bytes.size - inputStream.available()
 
-                if (inputStream.available() < packetLength) {
-                    // not enough data
-                    return
-                }
+                if (inputStream.available() < packetLength) return
+
                 val packetData = ByteArray(packetLength)
                 inputStream.read(packetData)
 
                 handlePacket(packetData)
 
-                // remove the consumed bytes
                 val totalConsumed = headerSize + packetLength
                 val remaining = bytes.copyOfRange(totalConsumed, bytes.size)
-
                 incomingBuffer.reset()
                 incomingBuffer.write(remaining)
 
-            } catch (e: Exception) { return } // not enough data
+            } catch (_: Exception) {
+                return
+            }
         }
     }
 
@@ -89,12 +88,13 @@ class Connection(
             val packet = PacketRegistry.create(protocolState, packetId) ?: return
 
             packet.read(buffer)
-            println("HandlePacket: State=$protocolState, ID=0x${packetId.toString(16)}, Connection=${address}:${port}")
+            println("HandlePacket: Packet=${packet.javaClass.simpleName} State=$protocolState, ID=0x${packetId.toString(16)}, Connection=$address:$port")
             packet.handle(this)
         } catch (e: Exception) {
             println("Packet handling error: ${e.message}")
         }
     }
+
     suspend fun sendPacket(packetId: Int, writer: (PacketBuffer) -> Unit) {
         if (!alive.get()) return
 
@@ -119,7 +119,6 @@ class Connection(
     suspend fun disconnect() {
         if (!alive.compareAndSet(true, false)) return
         try { socket.close() } catch (_: Exception) {}
-
         onDisconnect(this)
     }
 
@@ -128,5 +127,5 @@ class Connection(
     }
 
     fun getScope(): CoroutineScope = scope
-    fun getServer(): MinePactServer = server
+    fun getServer(): MinecraftServer = server
 }
